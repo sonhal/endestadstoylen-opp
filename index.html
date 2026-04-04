@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Endestadstøylen opp</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: Georgia, 'Times New Roman', serif;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem 1.5rem;
+      overflow: hidden;
+      background-color: #1a2a3a;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-image: url('https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1920&q=85');
+      background-size: cover;
+      background-position: center 40%;
+      background-repeat: no-repeat;
+      filter: brightness(0.55) saturate(0.9);
+      z-index: 0;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(10, 20, 35, 0.35) 0%,
+        rgba(10, 20, 35, 0.60) 100%
+      );
+      z-index: 1;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 820px;
+    }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #a8cce8;
+      border: 1px solid rgba(168, 204, 232, 0.45);
+      border-radius: 2px;
+      padding: 0.35em 0.9em;
+      margin-bottom: 1.6rem;
+    }
+
+    /* ── Title ── */
+    h1 {
+      font-size: clamp(2.4rem, 7vw, 5.5rem);
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      text-shadow: 0 2px 24px rgba(0,0,0,0.55);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Subtitle ── */
+    .subtitle {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(1rem, 2.5vw, 1.35rem);
+      color: rgba(220, 235, 255, 0.92);
+      letter-spacing: 0.03em;
+      margin-bottom: 3.5rem;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      width: 60px;
+      height: 2px;
+      background: rgba(168, 204, 232, 0.6);
+      margin: 0 auto 3rem;
+    }
+
+    /* ── Countdown ── */
+    .countdown {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem 1.5rem;
+    }
+
+    .countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 90px;
+    }
+
+    .countdown-number {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(2.8rem, 8vw, 5rem);
+      font-weight: 300;
+      color: #ffffff;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.4);
+      min-width: 2.2ch;
+      text-align: center;
+    }
+
+    .countdown-label {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(168, 204, 232, 0.85);
+      margin-top: 0.45rem;
+    }
+
+    .countdown-sep {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(2.8rem, 8vw, 5rem);
+      font-weight: 200;
+      color: rgba(255,255,255,0.3);
+      line-height: 1;
+      align-self: flex-start;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    /* ── Finished state ── */
+    .countdown-done {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      color: #a8cce8;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Footer note ── */
+    .hero-footer {
+      position: absolute;
+      bottom: 1.4rem;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.72rem;
+      color: rgba(200, 220, 240, 0.45);
+      letter-spacing: 0.05em;
+      text-align: center;
+    }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 480px) {
+      .countdown-sep { display: none; }
+      .countdown-unit { min-width: 70px; }
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-bg" role="img" aria-label="Norsk fjelllandskap"></div>
+  <div class="hero-overlay"></div>
+
+  <div class="hero-content">
+    <span class="badge">Fjellløp</span>
+
+    <h1>Endestadstøylen opp</h1>
+
+    <p class="subtitle">Neste løp kl&nbsp;12.00 &mdash; 26.&thinsp;Mars&nbsp;2027</p>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <div class="countdown" id="countdown" aria-live="polite" aria-label="Nedtelling til løpet"></div>
+  </div>
+
+  <p class="hero-footer">Endestadstøylen opp &bull; Fjellløp</p>
+</section>
+
+<script>
+  // Target: 2027-03-26 12:00:00 Europe/Oslo (CET = UTC+1; DST starts March 28 in 2027)
+  var TARGET_UTC = new Date('2027-03-26T11:00:00Z').getTime();
+
+  var el = document.getElementById('countdown');
+
+  function pad(n) {
+    return String(Math.floor(n)).padStart(2, '0');
+  }
+
+  function buildUnits(days, hours, minutes, seconds) {
+    var units = [
+      { value: pad(days),    label: days === 1 ? 'Dag' : 'Dager' },
+      { value: pad(hours),   label: 'Timer' },
+      { value: pad(minutes), label: 'Minutter' },
+      { value: pad(seconds), label: 'Sekunder' }
+    ];
+
+    var html = '';
+    units.forEach(function(u, i) {
+      html += '<div class="countdown-unit">'
+            + '<span class="countdown-number">' + u.value + '</span>'
+            + '<span class="countdown-label">' + u.label + '</span>'
+            + '</div>';
+      if (i < units.length - 1) {
+        html += '<span class="countdown-sep" aria-hidden="true">:</span>';
+      }
+    });
+    return html;
+  }
+
+  function tick() {
+    var now  = Date.now();
+    var diff = TARGET_UTC - now;
+
+    if (diff <= 0) {
+      el.innerHTML = '<p class="countdown-done">Løpet er i gang!</p>';
+      return;
+    }
+
+    var totalSec = Math.floor(diff / 1000);
+    var seconds  = totalSec % 60;
+    var totalMin = Math.floor(totalSec / 60);
+    var minutes  = totalMin % 60;
+    var totalHr  = Math.floor(totalMin / 60);
+    var hours    = totalHr % 24;
+    var days     = Math.floor(totalHr / 24);
+
+    el.innerHTML = buildUnits(days, hours, minutes, seconds);
+
+    // Schedule next tick aligned to the next whole second
+    var msIntoSec = diff % 1000;
+    setTimeout(tick, msIntoSec > 0 ? msIntoSec : 1000);
+  }
+
+  tick();
+</script>
+
+</body>
+</html>
