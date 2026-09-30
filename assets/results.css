@@ -333,6 +333,14 @@ tr.top3 td.place::before {
 }
 .race-card dt { color: var(--ink-2); }
 .race-card dd { font-variant-numeric: tabular-nums; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-card .card-note {
+  margin-top: 0.9rem;
+  font-size: 0.8rem;
+  background: var(--highlight);
+  border-left: 3px solid var(--gold);
+  padding: 0.35rem 0.6rem;
+  border-radius: 3px;
+}
 .race-card .cta { display: inline-block; margin-top: 1rem; font-size: 0.85rem; font-weight: 600; color: var(--accent); }
 .tag { display: inline-block; font-size: 0.7rem; background: var(--highlight); border-radius: 3px; padding: 0.1em 0.5em; margin-left: 0.4rem; vertical-align: middle; font-family: var(--sans); font-weight: 600; }
 

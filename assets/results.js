@@ -90,21 +90,43 @@
   }
 
   /* ── Tid ──
-   * "32:15" = 32 min 15 s, "1:02:03" = 1 t 2 min 3 s, tideler med . eller ,
+   * "32:15" = 32 min 15 s, "1:02:03" = 1 t 2 min 3 s.
+   * Punktum som skilletegn går også: "19.35" = 19:35, "1.02.03" = 1:02:03.
+   * Desimaler (tideler/hundredeler) skrives med komma: "19.35,34" eller
+   * "19:35,34". Med kolon kan desimalene også skrives med punktum: "19:35.34".
    * Returnerer sekunder, eller null hvis feltet ikke er en tid. */
+  function splitTime(str) {
+    var s = String(str || '').trim(), frac = '';
+    var comma = s.indexOf(',');
+    if (comma >= 0) {
+      frac = s.slice(comma + 1);
+      s = s.slice(0, comma);
+    } else if (s.indexOf(':') >= 0 && /\.\d+$/.test(s)) {
+      frac = s.slice(s.lastIndexOf('.') + 1);
+      s = s.slice(0, s.lastIndexOf('.'));
+    }
+    s = s.replace(/\./g, ':');
+    if (!/^\d+(:\d{1,2}){1,2}$/.test(s) || !/^\d*$/.test(frac)) return null;
+    return { main: s, frac: frac };
+  }
+
   function parseTime(str) {
-    if (!str) return null;
-    var s = String(str).trim().replace(',', '.');
-    if (!/^\d+(:\d{1,2}){1,2}(\.\d+)?$/.test(s)) return null;
-    var parts = s.split(':').map(parseFloat);
+    var t = splitTime(str);
+    if (!t) return null;
     var sec = 0;
-    parts.forEach(function (p) { sec = sec * 60 + p; });
-    return sec;
+    t.main.split(':').forEach(function (p) { sec = sec * 60 + parseInt(p, 10); });
+    return t.frac ? sec + parseFloat('0.' + t.frac) : sec;
+  }
+
+  // Antall desimaler oppgitt i tidsfeltet (0 hvis ingen)
+  function timeDecimals(str) {
+    var t = splitTime(str);
+    return t ? t.frac.length : 0;
   }
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
-  // decimals: antall desimaler på sekunder (0 eller 1)
+  // decimals: antall desimaler på sekunder (0–2)
   function formatTime(sec, decimals) {
     if (sec == null || isNaN(sec)) return '–';
     decimals = decimals || 0;
@@ -120,6 +142,10 @@
 
   function formatGap(sec, decimals) {
     if (!sec) return '–';
+    // Under ett minutt: bare sekunder, f.eks. "+2,14"
+    if (Math.round(sec * 100) / 100 < 60) {
+      return '+' + (decimals ? sec.toFixed(decimals).replace('.', ',') : String(Math.round(sec)));
+    }
     return '+' + formatTime(sec, decimals);
   }
 
@@ -206,12 +232,15 @@
       f.gap = f.seconds - winner;
     });
 
-    var hasTenths = finishers.some(function (f) { return f.seconds % 1 !== 0; });
+    // Vis like mange desimaler som den mest presise tiden i fila (maks hundredeler)
+    var decimals = Math.min(2, finishers.reduce(function (max, f) {
+      return Math.max(max, timeDecimals(f.rawTime));
+    }, 0));
 
     return {
       finishers: finishers,
       others: others,
-      decimals: hasTenths ? 1 : 0,
+      decimals: decimals,
       stats: computeStats(finishers, others),
       clubs: clubSummary(finishers)
     };

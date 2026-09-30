@@ -50,11 +50,6 @@
     var ok = items.filter(function (it) { return it.data && it.data.finishers.length; });
     var html = '';
 
-    var notes = items.filter(function (it) { return it.race.note; });
-    if (notes.length === items.length) {
-      html += '<p class="notice">' + esc(notes[0].race.note) + '</p>';
-    }
-
     /* Rekorder på tvers av år */
     if (ok.length) {
       var record = null, mostRunners = null, totalFinishers = 0, runners = {};
@@ -104,7 +99,8 @@
             '<dt>Vinner</dt><dd title="' + esc(s.winner.name) + '">' + esc(s.winner.name) + '</dd>' +
             '<dt>Vinnertid</dt><dd>' + R.formatTime(s.fastest, d) + '</dd>' +
             '<dt>Snittid</dt><dd>' + R.formatTime(s.mean, 0) + '</dd>' +
-          '</dl><span class="cta">Se resultater &rarr;</span></a>';
+          '</dl>' + (r.note ? '<p class="card-note">' + esc(r.note) + '</p>' : '') +
+          '<span class="cta">Se resultater &rarr;</span></a>';
       }).join('') + '</div></section>';
 
     /* Sammenligning mellom år */

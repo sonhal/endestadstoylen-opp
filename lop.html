@@ -78,16 +78,18 @@
     /* Nøkkeltall */
     var tiles = [
       { label: 'I mål', value: R.formatNumber(s.finishers),
-        detail: s.notFinished ? s.notFinished + ' ikke fullført' : s.clubs + ' klubber' },
+        detail: s.notFinished ? s.notFinished + ' ikke fullført' : s.clubs ? s.clubs + ' klubber' : '' },
       { label: 'Vinnertid', value: R.formatTime(s.fastest, d), detail: s.winner.name },
       { label: 'Gjennomsnittstid', value: R.formatTime(s.mean, 0),
-        detail: race.distanceKm ? R.formatPace(s.mean, race.distanceKm) : '+' + R.formatTime(s.mean - s.fastest) + ' bak vinner' },
+        detail: race.distanceKm ? R.formatPace(s.mean, race.distanceKm) : R.formatGap(s.mean - s.fastest, 0) + ' bak vinner' },
       { label: 'Mediantid', value: R.formatTime(s.median, 0), detail: 'Midterste løper' },
-      { label: 'Snitt topp 10', value: R.formatTime(s.top10Mean, 0),
-        detail: 'Topp ' + Math.min(10, s.finishers) + ' i mål' },
       { label: 'Siste i mål', value: R.formatTime(s.slowest, d),
         detail: 'Spenn ' + R.formatTime(s.slowest - s.fastest) }
     ];
+    // Topp 10-snitt er bare interessant når flere enn 10 er i mål
+    if (s.finishers > 10) {
+      tiles.splice(4, 0, { label: 'Snitt topp 10', value: R.formatTime(s.top10Mean, 0), detail: 'De 10 raskeste' });
+    }
     if (s.stdDev != null) {
       tiles.push({ label: 'Standardavvik', value: R.formatTime(s.stdDev, 0), detail: 'Spredning i tid' });
     }
@@ -115,8 +117,9 @@
           '<div class="gap">' + (f.gap ? R.formatGap(f.gap, d) : 'Vinner') + '</div></div>';
       }).join('') + '</div></section>';
 
-    /* Tidsfordeling */
-    html += '<section aria-labelledby="h-dist"><h2 id="h-dist">Tidsfordeling</h2>' +
+    /* Tidsfordeling – gir bare mening med en viss mengde løpere */
+    var showChart = s.finishers >= 10;
+    if (showChart) html += '<section aria-labelledby="h-dist"><h2 id="h-dist">Tidsfordeling</h2>' +
       '<p class="section-sub">Antall løpere per tidsintervall. Søk opp en løper i resultatlisten for å se hvor de havnet.</p>' +
       '<div class="chart-card" id="chart"></div></section>';
 
@@ -158,7 +161,7 @@
 
     main.innerHTML = html;
 
-    var chart = drawHistogram(document.getElementById('chart'), data);
+    var chart = showChart ? drawHistogram(document.getElementById('chart'), data) : { mark: function () {} };
     setupTable(data, paceCol ? race.distanceKm : null, chart);
   }
 
