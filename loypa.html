@@ -115,10 +115,8 @@
     }
 
     var nameEl = doc.getElementsByTagName('name')[0];
-    var linkEl = doc.querySelector('trk > link, metadata > link');
     return {
       name: nameEl ? nameEl.textContent : '',
-      link: linkEl ? linkEl.getAttribute('href') : '',
       points: points
     };
   }
@@ -208,7 +206,6 @@
       '<p class="credit">Kart © <a href="https://www.kartverket.no/">Kartverket</a>. Rutedata © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-bidragsytere</a>.</p>' +
       '<div class="actions">' +
         '<a class="button primary" href="' + esc(GPX_FILE) + '" download>Last ned GPX</a>' +
-        (/^https:\/\/www\.strava\.com\//.test(course.link) ? '<a class="button" href="' + esc(course.link) + '" rel="noopener" target="_blank">Åpne i Strava</a>' : '') +
         '<a class="button" href="resultater.html">Se resultater</a>' +
       '</div></section>';
 
