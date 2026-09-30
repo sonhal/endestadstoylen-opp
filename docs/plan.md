@@ -106,8 +106,8 @@ CREATE TABLE registrations (
   message           TEXT,               -- crew: "I can bring coffee", optional
   tshirt_size       TEXT NOT NULL       -- see "T-shirt sizes" below
                     CHECK (tshirt_size IN ('none',
-                      '110/116', '122/128', '134/140', '146/152', '158/164',
-                      'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL')),
+                      'dame-S', 'dame-M', 'dame-L', 'dame-XL', 'dame-XXL',
+                      'herre-S', 'herre-M', 'herre-L', 'herre-XL', 'herre-XXL')),
   publish_name      INTEGER NOT NULL DEFAULT 1,
   bib               INTEGER,            -- set by admin
   status            TEXT NOT NULL DEFAULT 'registered'
@@ -130,8 +130,9 @@ contact. The T-shirt size is not shown publicly.
 
 - The field is required, so nobody is forgotten when the order is placed.
   "No T-shirt" (`none`) is one of the choices.
-- Children's sizes are by height in cm (Norwegian standard), adult sizes are
-  unisex XS–3XL.
+- Separate women's and men's cut, each in S, M, L, XL and XXL. The form
+  shows them as "Dame M" / "Herre M". They are stored as one value
+  (`dame-M`), which keeps the count per size a plain `GROUP BY`.
 - The list of allowed sizes is in one place in the Go code and sent to the
   page by `GET /api/races/current`, so the form and the server can't disagree.
   Changing the list later needs a migration, because of the `CHECK`.
@@ -325,7 +326,6 @@ changes by hand.
 - Name of the new repository, and whether it should be private. Private
   works fine now that GitHub Pages is no longer used. The VPS then needs a
   read-only deploy key to `git pull`.
-- T-shirt: are the sizes right (children's sizes, unisex or separate
-  women's/men's cut)? Is the shirt free, and is there a deadline for the order?
+- T-shirt: is the shirt free, and is there a usual deadline for the order?
 - Should news also be managed on the admin page later, instead of through
   `nyheter.csv` in git?
