@@ -25,7 +25,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 2rem 1.5rem;
+      padding: 2rem 1rem 4.5rem;
       overflow: hidden;
       background-color: #1a2a3a;
     }
@@ -188,6 +188,87 @@
       border-color: #a8cce8;
     }
 
+    /* ── Last race highlight ── */
+    .last-race {
+      display: block;
+      width: 100%;
+      max-width: 440px;
+      margin: 2.6rem auto 0;
+      text-align: left;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #ffffff;
+      text-decoration: none;
+      background: rgba(10, 20, 35, 0.55);
+      border: 1px solid rgba(168, 204, 232, 0.35);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem 1rem;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: border-color 0.15s, transform 0.15s, background 0.15s;
+    }
+
+    .last-race[hidden] { display: none; }
+
+    .last-race:hover,
+    .last-race:focus-visible {
+      border-color: #a8cce8;
+      background: rgba(10, 20, 35, 0.7);
+      transform: translateY(-2px);
+    }
+
+    .last-race-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #a8cce8;
+    }
+
+    .last-race-title {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0.2rem 0 0.8rem;
+    }
+
+    .last-race ol { list-style: none; }
+
+    .last-race li {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      padding: 0.3rem 0;
+      font-size: 0.95rem;
+    }
+
+    .last-race li + li { border-top: 1px solid rgba(168, 204, 232, 0.15); }
+
+    .last-race .medal {
+      flex: none;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      align-self: center;
+    }
+
+    .last-race .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .last-race .t { font-variant-numeric: tabular-nums; }
+    .last-race .gap { font-size: 0.8rem; color: rgba(200, 220, 240, 0.6); font-variant-numeric: tabular-nums; min-width: 3.6rem; text-align: right; }
+
+    .last-race-foot {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.4rem 1rem;
+      margin-top: 0.8rem;
+      font-size: 0.8rem;
+      color: rgba(200, 220, 240, 0.75);
+    }
+
+    .last-race-cta { font-weight: 700; color: #ffffff; letter-spacing: 0.04em; }
+    .last-race:hover .last-race-cta { text-decoration: underline; }
+
     /* ── Footer note ── */
     .hero-footer {
       position: absolute;
@@ -230,6 +311,9 @@
       <a class="results-link" href="loypa.html">Løypa &rarr;</a>
       <a class="results-link" href="resultater.html">Tidligere resultater &rarr;</a>
     </nav>
+
+    <!-- Fylles ut fra results/ av scriptet nederst; forblir skjult om resultatene ikke kan lastes -->
+    <a class="last-race" id="last-race" href="resultater.html" hidden></a>
   </div>
 
   <p class="hero-footer">Endestadstøylen opp &bull; Fjellløp</p>
@@ -291,6 +375,48 @@
   }
 
   tick();
+</script>
+
+<script src="assets/results.js"></script>
+<script>
+  // Oppsummering av siste løp
+  (function () {
+    var card = document.getElementById('last-race');
+    var R = window.Results;
+    if (!R || !window.fetch) return;
+    var MEDALS = ['#d4a53a', '#b3bcc6', '#c07a4a'];
+
+    R.loadRaceIndex().then(function (races) {
+      if (!races.length) return;
+      var race = races[0];
+      return R.loadRace(race).then(function (data) {
+        if (!data.finishers.length) return;
+        var s = data.stats, d = data.decimals, esc = R.esc;
+
+        var rows = data.finishers.filter(function (f) { return f.place <= 3; }).map(function (f) {
+          return '<li><span class="medal" style="background:' + MEDALS[f.place - 1] + '" aria-label="' + f.place + '. plass"></span>' +
+            '<span class="who">' + esc(f.name) + '</span>' +
+            '<span class="t">' + R.formatTime(f.seconds, d) + '</span>' +
+            '<span class="gap">' + (f.gap ? R.formatGap(f.gap, d) : '') + '</span></li>';
+        }).join('');
+
+        var facts = [s.finishers + ' i mål'];
+        if (race.climbM) facts.push('vinnerfart ' + R.formatVertical(s.fastest, race.climbM));
+        if (race.note) facts.push(race.note.replace(/\s*[–-].*$/, ''));
+
+        card.href = 'lop.html?ar=' + encodeURIComponent(race.year);
+        card.innerHTML =
+          '<div class="last-race-eyebrow">Siste løp' + (race.date ? ' · ' + esc(R.formatDate(race.date)) : '') + '</div>' +
+          '<div class="last-race-title">' + esc(race.year) + ': ' + esc(s.winner.name) + ' vant</div>' +
+          '<ol>' + rows + '</ol>' +
+          '<div class="last-race-foot"><span>' + esc(facts.join(' · ')) + '</span>' +
+          '<span class="last-race-cta">Se resultatene &rarr;</span></div>';
+        card.setAttribute('aria-label', 'Siste løp ' + race.year + ': ' + s.winner.name + ' vant på ' +
+          R.formatTime(s.fastest, d) + '. Se resultatene.');
+        card.hidden = false;
+      });
+    }).catch(function () { /* ingen resultater å vise – kortet forblir skjult */ });
+  })();
 </script>
 
 </body>
