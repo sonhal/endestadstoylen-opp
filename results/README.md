@@ -33,7 +33,7 @@ startnr,navn,klubb,tid
 ```
 
 - **Rekkefølgen spiller ingen rolle.** Lista sorteres på tid, og lik tid gir delt plass.
-- **Tid:** `mm:ss` (f.eks. `34:57`) eller `t:mm:ss` (f.eks. `1:02:10`). Tideler er lov (`34:57.3` eller `34:57,3`), og da vises tideler på hele løpet. En tid med to ledd leses alltid som minutter:sekunder.
+- **Tid:** `mm:ss` (f.eks. `34:57`) eller `t:mm:ss` (f.eks. `1:02:10`). Punktum kan brukes i stedet for kolon (`19.35`). Tideler og hundredeler skrives etter komma (`19.35,34` = 19 min 35,34 s), eller etter punktum når tiden bruker kolon (`19:35.34`). Siden viser like mange desimaler som den mest presise tiden i fila. En tid med to ledd leses alltid som minutter og sekunder. Tider som inneholder komma må stå i anførselstegn i en kommaseparert fil, f.eks. `"19.35,34"`. I en semikolonseparert fil trengs det ikke.
 - **Ikke fullført:** skriv `DNF`, `DNS` eller `DSQ` i tid-feltet, eller la feltet stå tomt. Disse vises nederst i lista uten plassering.
 - **Klubb** kan stå tom.
 - **Skilletegn:** komma, semikolon (standard når norsk Excel lagrer CSV) og tab fungerer.
