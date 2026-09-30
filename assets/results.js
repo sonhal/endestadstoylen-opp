@@ -8,6 +8,7 @@
   'use strict';
 
   var INDEX_FILE = 'results/lop.csv';
+  var NEWS_FILE = 'nyheter/nyheter.csv';
 
   // Kolonnenavn som godtas i CSV-filene (små bokstaver, uten mellomrom).
   var ALIASES = {
@@ -205,6 +206,26 @@
     });
   }
 
+  /* ── Nyheter ──
+   * Rekkefølgen i fila beholdes: øverste linje er nyeste sak. */
+  function loadNews() {
+    return fetchText(NEWS_FILE).then(function (text) {
+      return parseCSV(text).map(function (r) {
+        var url = r.lenke || r.url || r.link || '';
+        return {
+          date: r.dato || r.date || '',
+          type: (r.type || '').toLowerCase() === 'presse' ? 'presse' : 'nyhet',
+          title: r.tittel || r.title || '',
+          text: r.tekst || r.text || '',
+          // Bare vanlige nettadresser, slik at en feil i fila ikke kan gi javascript:-lenker
+          url: /^https?:\/\//i.test(url) ? url : '',
+          source: r.kilde || r.source || '',
+          paywall: /^(ja|yes|x|1|true)$/i.test(r.betalingsmur || r.paywall || '')
+        };
+      }).filter(function (n) { return n.title; });
+    });
+  }
+
   /* ── Resultater og statistikk ── */
   function buildResults(rows) {
     var finishers = [], others = [];
@@ -338,6 +359,7 @@
     formatDate: formatDate,
     loadRaceIndex: loadRaceIndex,
     loadRace: loadRace,
+    loadNews: loadNews,
     buildResults: buildResults,
     histogram: histogram
   };

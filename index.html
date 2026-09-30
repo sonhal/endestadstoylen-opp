@@ -269,6 +269,49 @@
     .last-race-cta { font-weight: 700; color: #ffffff; letter-spacing: 0.04em; }
     .last-race:hover .last-race-cta { text-decoration: underline; }
 
+    /* ── Latest news ── */
+    .latest-news {
+      display: flex;
+      align-items: baseline;
+      gap: 0.7rem;
+      width: 100%;
+      max-width: 440px;
+      margin: 0.8rem auto 0;
+      text-align: left;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.9rem;
+      color: #ffffff;
+      text-decoration: none;
+      background: rgba(10, 20, 35, 0.55);
+      border: 1px solid rgba(168, 204, 232, 0.35);
+      border-radius: 10px;
+      padding: 0.75rem 1.25rem;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: border-color 0.15s, transform 0.15s, background 0.15s;
+    }
+
+    .latest-news[hidden] { display: none; }
+
+    .latest-news:hover,
+    .latest-news:focus-visible {
+      border-color: #a8cce8;
+      background: rgba(10, 20, 35, 0.7);
+      transform: translateY(-2px);
+    }
+
+    .latest-news-eyebrow {
+      flex: none;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #a8cce8;
+    }
+
+    .latest-news-title { flex: 1; min-width: 0; }
+    .latest-news:hover .latest-news-title { text-decoration: underline; }
+
     /* ── Footer note ── */
     .hero-footer {
       position: absolute;
@@ -310,10 +353,14 @@
     <nav class="hero-links" aria-label="Mer om løpet">
       <a class="results-link" href="loypa.html">Løypa &rarr;</a>
       <a class="results-link" href="resultater.html">Tidligere resultater &rarr;</a>
+      <a class="results-link" href="nyheter.html">Nyheter &rarr;</a>
     </nav>
 
     <!-- Fylles ut fra results/ av scriptet nederst; forblir skjult om resultatene ikke kan lastes -->
     <a class="last-race" id="last-race" href="resultater.html" hidden></a>
+
+    <!-- Siste sak fra nyheter/nyheter.csv; forblir skjult om fila ikke kan lastes -->
+    <a class="latest-news" id="latest-news" href="nyheter.html" hidden></a>
   </div>
 
   <p class="hero-footer">Endestadstøylen opp &bull; Fjellløp</p>
@@ -416,6 +463,23 @@
         card.hidden = false;
       });
     }).catch(function () { /* ingen resultater å vise – kortet forblir skjult */ });
+  })();
+</script>
+<script>
+  // Siste nytt
+  (function () {
+    var card = document.getElementById('latest-news');
+    var R = window.Results;
+    if (!R || !window.fetch) return;
+
+    R.loadNews().then(function (items) {
+      if (!items.length) return;
+      var n = items[0];
+      card.innerHTML =
+        '<span class="latest-news-eyebrow">' + (n.type === 'presse' ? 'I media' : 'Siste nytt') + '</span>' +
+        '<span class="latest-news-title">' + R.esc(n.title) + (n.source ? ' (' + R.esc(n.source) + ')' : '') + ' &rarr;</span>';
+      card.hidden = false;
+    }).catch(function () { /* ingen nyheter å vise – kortet forblir skjult */ });
   })();
 </script>
 
