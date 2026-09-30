@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tidligere resultater – Endestadstøylen opp</title>
+  <link rel="stylesheet" href="assets/results.css" />
+</head>
+<body>
+
+<header class="page-header">
+  <div class="inner">
+    <nav class="crumbs" aria-label="Brødsmuler">
+      <a href="./">Forside</a> &rsaquo; <span>Resultater</span>
+    </nav>
+    <span class="badge">Resultater</span>
+    <h1>Tidligere løp</h1>
+    <p class="lead">Sluttider, statistikk og rekorder fra tidligere utgaver av Endestadstøylen opp. <a href="loypa.html" style="color:#a8cce8">Se løypa</a></p>
+  </div>
+</header>
+
+<main id="main">
+  <p class="loading">Laster resultater…</p>
+</main>
+
+<footer>Endestadstøylen opp &bull; Fjellløp</footer>
+
+<script src="assets/results.js"></script>
+<script>
+(function () {
+  'use strict';
+  var R = Results, esc = R.esc;
+  var main = document.getElementById('main');
+
+  R.loadRaceIndex().then(function (races) {
+    if (!races.length) throw new Error('Ingen løp er registrert ennå.');
+    // Et løp med manglende fil stopper ikke resten av oversikten
+    return Promise.all(races.map(function (race) {
+      return R.loadRace(race).then(function (data) {
+        return { race: race, data: data };
+      }, function (err) {
+        return { race: race, error: err };
+      });
+    }));
+  }).then(render).catch(function (err) {
+    main.innerHTML = '<div class="error"><strong>Kunne ikke vise resultatene.</strong><br>' + esc(err.message) + '</div>';
+  });
+
+  function render(items) {
+    var ok = items.filter(function (it) { return it.data && it.data.finishers.length; });
+    var html = '';
+
+    /* Rekorder på tvers av år – vises først når det finnes mer enn ett løp */
+    var record = null;
+    if (ok.length > 1) {
+      var mostRunners = null, totalFinishers = 0, runners = {};
+      ok.forEach(function (it) {
+        var w = it.data.finishers[0];
+        if (!record || w.seconds < record.runner.seconds) record = { runner: w, year: it.race.year, d: it.data.decimals };
+        if (!mostRunners || it.data.stats.finishers > mostRunners.count) mostRunners = { count: it.data.stats.finishers, year: it.race.year };
+        totalFinishers += it.data.stats.finishers;
+        it.data.finishers.forEach(function (f) { runners[f.name.toLowerCase()] = (runners[f.name.toLowerCase()] || 0) + 1; });
+      });
+      var unique = Object.keys(runners).length;
+      var veterans = Object.keys(runners).filter(function (k) { return runners[k] === ok.length; }).length;
+
+      var tiles = [
+        { label: 'Løyperekord', value: R.formatTime(record.runner.seconds, record.d),
+          detail: record.runner.name + ', ' + record.year },
+        { label: 'Flest i mål', value: R.formatNumber(mostRunners.count), detail: 'i ' + mostRunners.year },
+        { label: 'Totalt i mål', value: R.formatNumber(totalFinishers), detail: ok.length + ' løp' },
+        { label: 'Unike løpere', value: R.formatNumber(unique),
+          detail: ok.length > 1 ? veterans + ' har fullført alle ' + ok.length : 'Basert på navn' }
+      ];
+      html += '<section aria-labelledby="h-records"><h2 id="h-records">Rekorder</h2>' +
+        '<p class="section-sub">På tvers av alle registrerte løp.</p><div class="tiles">' +
+        tiles.map(function (t) {
+          return '<div class="tile"><div class="tile-label">' + esc(t.label) + '</div>' +
+            '<div class="tile-value">' + esc(t.value) + '</div>' +
+            '<div class="tile-detail" title="' + esc(t.detail) + '">' + esc(t.detail) + '</div></div>';
+        }).join('') + '</div></section>';
+    }
+
+    /* Ett kort per løp */
+    html += '<section aria-labelledby="h-races"><h2 id="h-races">Løp</h2>' +
+      '<p class="section-sub">Velg et år for full resultatliste, tidsfordeling og klubboversikt.</p><div class="race-list">' +
+      items.map(function (it) {
+        var r = it.race, href = 'lop.html?ar=' + encodeURIComponent(r.year);
+        if (!it.data || !it.data.finishers.length) {
+          return '<div class="race-card"><div class="year">' + esc(r.year) + '</div>' +
+            '<div class="date">' + esc(R.formatDate(r.date)) + '</div>' +
+            '<p class="muted" style="margin-top:1rem">Resultater er ikke tilgjengelige.</p></div>';
+        }
+        var s = it.data.stats, d = it.data.decimals;
+        return '<a class="race-card" href="' + href + '">' +
+          '<div class="year">' + esc(r.year) + '</div>' +
+          '<div class="date">' + esc(R.formatDate(r.date)) + '</div>' +
+          '<dl>' +
+            '<dt>I mål</dt><dd>' + s.finishers + '</dd>' +
+            '<dt>Vinner</dt><dd title="' + esc(s.winner.name) + '">' + esc(s.winner.name) + '</dd>' +
+            '<dt>Vinnertid</dt><dd>' + R.formatTime(s.fastest, d) + '</dd>' +
+            '<dt>Snittid</dt><dd>' + R.formatTime(s.mean, 0) + '</dd>' +
+          '</dl>' + (r.note ? '<p class="card-note">' + esc(r.note) + '</p>' : '') +
+          '<span class="cta">Se resultater &rarr;</span></a>';
+      }).join('') + '</div></section>';
+
+    /* Sammenligning mellom år */
+    if (ok.length > 1) {
+      html += '<section aria-labelledby="h-compare"><h2 id="h-compare">Utvikling</h2>' +
+        '<p class="section-sub">Nøkkeltall år for år.</p>' +
+        '<div class="table-wrap"><table><thead><tr>' +
+          '<th scope="col">År</th><th class="num" scope="col">I mål</th><th scope="col">Vinner</th>' +
+          '<th class="num" scope="col">Vinnertid</th><th class="num hide-sm" scope="col">Snittid</th>' +
+          '<th class="num hide-sm" scope="col">Mediantid</th><th class="num hide-sm" scope="col">Klubber</th>' +
+        '</tr></thead><tbody>' + ok.map(function (it) {
+          var s = it.data.stats, d = it.data.decimals;
+          var isRecord = it.data.finishers[0] === record.runner;
+          return '<tr><td><a href="lop.html?ar=' + encodeURIComponent(it.race.year) + '">' + esc(it.race.year) + '</a></td>' +
+            '<td class="num">' + s.finishers + '</td>' +
+            '<td class="name">' + esc(s.winner.name) + '</td>' +
+            '<td class="num">' + R.formatTime(s.fastest, d) + (isRecord ? ' <span class="tag" title="Løyperekord">R</span>' : '') + '</td>' +
+            '<td class="num hide-sm">' + R.formatTime(s.mean, 0) + '</td>' +
+            '<td class="num hide-sm">' + R.formatTime(s.median, 0) + '</td>' +
+            '<td class="num hide-sm">' + s.clubs + '</td></tr>';
+        }).join('') + '</tbody></table></div></section>';
+    }
+
+    main.innerHTML = html;
+  }
+})();
+</script>
+</body>
+</html>

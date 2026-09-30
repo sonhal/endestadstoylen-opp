@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resultater – Endestadstøylen opp</title>
+  <link rel="stylesheet" href="assets/results.css" />
+</head>
+<body>
+
+<header class="page-header">
+  <div class="inner">
+    <nav class="crumbs" aria-label="Brødsmuler">
+      <a href="./">Forside</a> &rsaquo; <a href="resultater.html">Resultater</a> &rsaquo; <span id="crumb-year">…</span>
+    </nav>
+    <span class="badge">Resultater</span>
+    <h1 id="race-title">Endestadstøylen opp</h1>
+    <p class="lead" id="race-lead"></p>
+    <nav class="year-nav" id="year-nav" aria-label="Velg år"></nav>
+  </div>
+</header>
+
+<main id="main">
+  <p class="loading">Laster resultater…</p>
+</main>
+
+<footer>Endestadstøylen opp &bull; Fjellløp</footer>
+
+<script src="assets/results.js"></script>
+<script>
+(function () {
+  'use strict';
+  var R = Results, esc = R.esc;
+  var main = document.getElementById('main');
+
+  var params = new URLSearchParams(location.search);
+  var wantedYear = params.get('ar');
+
+  R.loadRaceIndex().then(function (races) {
+    if (!races.length) throw new Error('Ingen løp er registrert i results/lop.csv.');
+
+    // Uten gyldig ?ar= vises siste løp
+    var race = races.filter(function (r) { return r.year === wantedYear; })[0] || races[0];
+    renderHeader(race, races);
+
+    return R.loadRace(race).then(function (data) { render(race, data); });
+  }).catch(function (err) {
+    main.innerHTML = '<div class="error"><strong>Kunne ikke vise resultatene.</strong><br>' + esc(err.message) + '</div>';
+  });
+
+  function renderHeader(race, races) {
+    document.title = 'Resultater ' + race.year + ' – Endestadstøylen opp';
+    document.getElementById('crumb-year').textContent = race.year;
+    document.getElementById('race-title').textContent = 'Endestadstøylen opp ' + race.year;
+
+    var lead = [R.formatDate(race.date)];
+    if (race.distanceKm) lead.push(R.formatNumber(race.distanceKm, race.distanceKm % 1 ? 2 : 0).replace(/(,\d)0$/, '$1') + ' km');
+    if (race.climbM) lead.push(R.formatNumber(race.climbM) + ' høydemeter');
+    var leadEl = document.getElementById('race-lead');
+    leadEl.textContent = lead.filter(Boolean).join(' · ');
+    if (race.distanceKm || race.climbM) {
+      leadEl.insertAdjacentHTML('beforeend', ' · <a href="loypa.html" style="color:#a8cce8">Se løypa</a>');
+    }
+
+    document.getElementById('year-nav').innerHTML = races.slice().reverse().map(function (r) {
+      return '<a href="lop.html?ar=' + encodeURIComponent(r.year) + '"' +
+        (r === race ? ' aria-current="page"' : '') + '>' + esc(r.year) + '</a>';
+    }).join('');
+  }
+
+  function render(race, data) {
+    var s = data.stats, d = data.decimals;
+    var html = '';
+
+    if (race.note) html += '<p class="notice">' + esc(race.note) + '</p>';
+
+    if (!data.finishers.length) {
+      main.innerHTML = html + '<p class="error">Ingen gyldige sluttider funnet i ' + esc(race.file) + '.</p>';
+      return;
+    }
+
+    /* Nøkkeltall */
+    var tiles = [
+      { label: 'I mål', value: R.formatNumber(s.finishers),
+        detail: s.notFinished ? s.notFinished + ' ikke fullført' : s.clubs ? s.clubs + ' klubber' : '' },
+      { label: 'Vinnertid', value: R.formatTime(s.fastest, d), detail: s.winner.name },
+      { label: 'Gjennomsnittstid', value: R.formatTime(s.mean, 0),
+        detail: race.distanceKm ? R.formatPace(s.mean, race.distanceKm) : R.formatGap(s.mean - s.fastest, 0) + ' bak vinner' },
+      { label: 'Mediantid', value: R.formatTime(s.median, 0), detail: 'Midterste løper' },
+      { label: 'Siste i mål', value: R.formatTime(s.slowest, d),
+        detail: 'Spenn ' + R.formatTime(s.slowest - s.fastest) }
+    ];
+    // Topp 10-snitt er bare interessant når flere enn 10 er i mål
+    if (s.finishers > 10) {
+      tiles.splice(4, 0, { label: 'Snitt topp 10', value: R.formatTime(s.top10Mean, 0), detail: 'De 10 raskeste' });
+    }
+    if (s.stdDev != null) {
+      tiles.push({ label: 'Standardavvik', value: R.formatTime(s.stdDev, 0), detail: 'Spredning i tid' });
+    }
+    // I bratte løp sier vertikalfart mer enn min/km, så da vises den i stedet
+    if (race.climbM) {
+      tiles.push({ label: 'Vertikalfart', value: R.formatVertical(s.fastest, race.climbM), detail: 'Vinner' });
+    } else if (race.distanceKm) {
+      tiles.push({ label: 'Vinnertempo', value: R.formatPace(s.fastest, race.distanceKm).replace(' /km', ''), detail: 'min per km' });
+    }
+
+    html += '<section aria-labelledby="h-stats"><h2 id="h-stats">Nøkkeltall</h2>' +
+      '<p class="section-sub">Basert på ' + s.finishers + ' deltakere med registrert sluttid.</p>' +
+      '<div class="tiles">' + tiles.map(function (t) {
+        return '<div class="tile"><div class="tile-label">' + esc(t.label) + '</div>' +
+          '<div class="tile-value">' + esc(t.value) + '</div>' +
+          '<div class="tile-detail" title="' + esc(t.detail) + '">' + esc(t.detail) + '</div></div>';
+      }).join('') + '</div></section>';
+
+    /* Pallen */
+    var podium = data.finishers.filter(function (f) { return f.place <= 3; });
+    html += '<section aria-labelledby="h-podium"><h2 id="h-podium">Pallen</h2>' +
+      '<div class="podium">' + podium.map(function (f) {
+        return '<div class="podium-card medal-' + f.place + '">' +
+          '<div class="pos">' + f.place + '. plass</div>' +
+          '<div class="who">' + esc(f.name) + '</div>' +
+          (f.club ? '<div class="club">' + esc(f.club) + '</div>' : '') +
+          '<div class="time">' + R.formatTime(f.seconds, d) + '</div>' +
+          '<div class="gap">' + (f.gap ? R.formatGap(f.gap, d) : 'Vinner') + '</div></div>';
+      }).join('') + '</div></section>';
+
+    /* Tidsfordeling – gir bare mening med en viss mengde løpere */
+    var showChart = s.finishers >= 10;
+    if (showChart) html += '<section aria-labelledby="h-dist"><h2 id="h-dist">Tidsfordeling</h2>' +
+      '<p class="section-sub">Antall løpere per tidsintervall. Søk opp en løper i resultatlisten for å se hvor de havnet.</p>' +
+      '<div class="chart-card" id="chart"></div></section>';
+
+    /* Resultatliste */
+    var paceCol = !!race.distanceKm;
+    // Kolonner uten data i fila (f.eks. før klubb er registrert) skjules
+    var everyone = data.finishers.concat(data.others);
+    var cols = {
+      bib: everyone.some(function (f) { return f.bib; }),
+      club: everyone.some(function (f) { return f.club; }),
+      km: paceCol ? race.distanceKm : null,
+      climb: race.climbM
+    };
+    html += '<section aria-labelledby="h-results"><h2 id="h-results">Resultatliste</h2>' +
+      '<div class="toolbar">' +
+        '<input type="search" class="search" id="search" placeholder="Søk på navn' + (cols.club ? ', klubb' : '') + (cols.bib ? ' eller startnummer' : '') + '" aria-label="Søk i resultatlisten">' +
+        '<span class="count" id="count"></span>' +
+        '<a class="download" href="' + esc(race.file) + '" download>Last ned CSV</a>' +
+      '</div>' +
+      '<div class="table-wrap"><table id="results-table"><thead><tr>' +
+        th('place', 'Plass', 'num') +
+        (cols.bib ? th('bib', 'Startnr', 'num hide-sm') : '') +
+        th('name', 'Navn') +
+        (cols.club ? th('club', 'Klubb') : '') +
+        th('seconds', 'Tid', 'num') +
+        '<th class="num hide-sm" scope="col">Etter vinner</th>' +
+        (paceCol ? '<th class="num hide-sm" scope="col">Tempo</th>' : '') +
+        (cols.climb ? '<th class="num hide-sm" scope="col" title="Høydemeter per time">Vertikalfart</th>' : '') +
+      '</tr></thead><tbody></tbody></table></div></section>';
+
+    /* Klubber */
+    var clubs = data.clubs.filter(function (c) { return c.club; });
+    if (clubs.length) {
+      html += '<section aria-labelledby="h-clubs"><h2 id="h-clubs">Klubber</h2>' +
+        '<p class="section-sub">Klubber med deltakere i mål, sortert etter antall.</p>' +
+        '<div class="table-wrap"><table><thead><tr>' +
+          '<th scope="col">Klubb</th><th class="num" scope="col">Antall</th>' +
+          '<th scope="col" class="hide-sm">Raskeste</th><th class="num" scope="col">Beste tid</th>' +
+          '<th class="num hide-sm" scope="col">Snittid</th>' +
+        '</tr></thead><tbody>' + data.clubs.map(function (c) {
+          return '<tr><td class="club">' + (c.club ? esc(c.club) : '<span class="muted">Uten klubb</span>') + '</td>' +
+            '<td class="num">' + c.count + '</td>' +
+            '<td class="hide-sm">' + esc(c.bestName) + '</td>' +
+            '<td class="num">' + R.formatTime(c.best, d) + '</td>' +
+            '<td class="num hide-sm">' + R.formatTime(c.mean, 0) + '</td></tr>';
+        }).join('') + '</tbody></table></div></section>';
+    }
+
+    main.innerHTML = html;
+
+    var chart = showChart ? drawHistogram(document.getElementById('chart'), data) : { mark: function () {} };
+    setupTable(data, cols, chart);
+  }
+
+  function th(key, label, cls) {
+    return '<th scope="col" data-sort="' + key + '"' + (cls ? ' class="' + cls + '"' : '') +
+      (key === 'place' ? ' aria-sort="ascending"' : '') + '><button type="button">' + label + '</button></th>';
+  }
+
+  /* ── Resultattabell med søk og sortering ── */
+  function setupTable(data, cols, chart) {
+    var km = cols.km;
+    var table = document.getElementById('results-table');
+    var tbody = table.querySelector('tbody');
+    var search = document.getElementById('search');
+    var count = document.getElementById('count');
+    var d = data.decimals;
+    var sortKey = 'place', sortDir = 1;
+
+    var all = data.finishers.concat(data.others);
+
+    function compare(a, b) {
+      // Ikke fullførte havner alltid nederst
+      if (!a.place !== !b.place) return a.place ? -1 : 1;
+      var va = a[sortKey], vb = b[sortKey];
+      if (sortKey === 'bib') { va = parseInt(va, 10) || Infinity; vb = parseInt(vb, 10) || Infinity; }
+      if (typeof va === 'string') return sortDir * va.localeCompare(vb, 'nb');
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return sortDir * (va - vb) || (a.place - b.place);
+    }
+
+    function row(f) {
+      var finished = f.place != null;
+      var cls = finished ? (f.place <= 3 ? 'top3 medal-' + f.place : '') : 'dnf';
+      return '<tr class="' + cls + '">' +
+        '<td class="num place">' + (finished ? f.place + '.' : '–') + '</td>' +
+        (cols.bib ? '<td class="num hide-sm muted">' + esc(f.bib) + '</td>' : '') +
+        '<td class="name">' + esc(f.name) + '</td>' +
+        (cols.club ? '<td class="club">' + esc(f.club) + '</td>' : '') +
+        '<td class="num">' + (finished ? R.formatTime(f.seconds, d) : esc(f.status)) + '</td>' +
+        '<td class="num hide-sm muted">' + (finished ? R.formatGap(f.gap, d) : '') + '</td>' +
+        (km ? '<td class="num hide-sm muted">' + (finished ? R.formatPace(f.seconds, km) : '') + '</td>' : '') +
+        (cols.climb ? '<td class="num hide-sm muted">' + (finished ? R.formatVertical(f.seconds, cols.climb) : '') + '</td>' : '') +
+        '</tr>';
+    }
+
+    function update() {
+      var q = search.value.trim().toLowerCase();
+      var rows = all.filter(function (f) {
+        return !q || f.name.toLowerCase().indexOf(q) >= 0 ||
+          f.club.toLowerCase().indexOf(q) >= 0 || f.bib.toLowerCase() === q;
+      }).sort(compare);
+
+      tbody.innerHTML = rows.length ? rows.map(row).join('') :
+        '<tr class="empty-row"><td colspan="' + table.querySelectorAll('thead th').length + '">Ingen treff på «' + esc(search.value) + '»</td></tr>';
+      count.textContent = q ? rows.length + ' av ' + all.length + ' deltakere' : all.length + ' deltakere';
+
+      // Marker løperen i histogrammet når søket treffer én person i mål
+      var hit = rows.filter(function (f) { return f.place != null; });
+      chart.mark(q && hit.length === 1 ? hit[0] : null);
+    }
+
+    table.querySelectorAll('th[data-sort] button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.parentNode.getAttribute('data-sort');
+        sortDir = key === sortKey ? -sortDir : 1;
+        sortKey = key;
+        table.querySelectorAll('th[data-sort]').forEach(function (h) { h.removeAttribute('aria-sort'); });
+        btn.parentNode.setAttribute('aria-sort', sortDir === 1 ? 'ascending' : 'descending');
+        update();
+      });
+    });
+    search.addEventListener('input', update);
+    update();
+  }
+
+  /* ── Histogram (inline SVG) ── */
+  function drawHistogram(container, data) {
+    var times = data.finishers.map(function (f) { return f.seconds; });
+    var h = R.histogram(times);
+    var bins = h.bins;
+
+    // Tegn i faktisk bredde, så teksten har lesbar størrelse også på mobil
+    var W = Math.max(300, Math.min(720, container.clientWidth - 32));
+    var H = W < 500 ? 200 : 250, m = { top: 26, right: 8, bottom: 30, left: 34 };
+    var pw = W - m.left - m.right, ph = H - m.top - m.bottom;
+    var maxCount = Math.max.apply(null, bins.map(function (b) { return b.count; }));
+
+    // Runde y-verdier
+    var step = maxCount <= 5 ? 1 : maxCount <= 12 ? 2 : maxCount <= 30 ? 5 : 10;
+    var yMax = Math.ceil(maxCount / step) * step;
+    var band = pw / bins.length;
+    var barW = Math.max(4, Math.min(band - 2, 44));
+    var x0 = h.bins[0].from, x1 = h.bins[bins.length - 1].to;
+
+    function y(v) { return m.top + ph - (v / yMax) * ph; }
+    function xTime(t) { return m.left + ((t - x0) / (x1 - x0)) * pw; }
+
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Histogram over sluttider">';
+    svg += '<g class="grid">';
+    for (var v = 0; v <= yMax; v += step) {
+      svg += '<line x1="' + m.left + '" x2="' + (W - m.right) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
+    }
+    svg += '</g><g class="axis">';
+    for (v = 0; v <= yMax; v += step) {
+      svg += '<text x="' + (m.left - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>';
+    }
+    // Hver n-te grense på x-aksen, så etikettene ikke kolliderer
+    var every = Math.ceil(bins.length / (W < 500 ? 4 : 8));
+    for (var i = 0; i <= bins.length; i += every) {
+      var t = x0 + i * h.width;
+      svg += '<text x="' + xTime(t) + '" y="' + (H - 8) + '" text-anchor="middle">' + R.formatTime(t) + '</text>';
+    }
+    svg += '</g><g>';
+
+    bins.forEach(function (b, idx) {
+      var cx = m.left + band * idx + band / 2;
+      var bx = cx - barW / 2;
+      var hitAttrs = 'class="hit" x="' + (m.left + band * idx) + '" y="' + m.top + '" width="' + band + '" height="' + ph + '"' +
+        ' data-idx="' + idx + '" tabindex="0" aria-label="' + R.formatTime(b.from) + '–' + R.formatTime(b.to) + ': ' + b.count + ' løpere"';
+      var bar = '';
+      if (b.count) {
+        var top = y(b.count), bottom = y(0), r = Math.min(4, barW / 2, bottom - top);
+        bar = '<path class="bar" data-idx="' + idx + '" d="M' + bx + ',' + bottom + 'V' + (top + r) +
+          'Q' + bx + ',' + top + ' ' + (bx + r) + ',' + top + 'H' + (bx + barW - r) +
+          'Q' + (bx + barW) + ',' + top + ' ' + (bx + barW) + ',' + (top + r) + 'V' + bottom + 'Z"/>';
+      }
+      svg += '<rect ' + hitAttrs + '/>' + bar;
+    });
+    svg += '</g><g id="marker"></g></svg><div class="tooltip" id="tip"></div>';
+    container.innerHTML = svg;
+
+    var svgEl = container.querySelector('svg');
+    var tip = container.querySelector('#tip');
+
+    function showTip(el) {
+      var b = bins[+el.getAttribute('data-idx')];
+      var bar = container.querySelector('.bar[data-idx="' + el.getAttribute('data-idx') + '"]');
+      container.querySelectorAll('.bar.active').forEach(function (a) { a.classList.remove('active'); });
+      if (bar) bar.classList.add('active');
+      var svgBox = svgEl.getBoundingClientRect(), boxC = container.getBoundingClientRect();
+      var scale = svgBox.width / W;
+      var idx = +el.getAttribute('data-idx');
+      tip.style.left = (svgBox.left - boxC.left + (m.left + band * idx + band / 2) * scale) + 'px';
+      tip.style.top = (svgBox.top - boxC.top + y(b.count) * scale) + 'px';
+      tip.innerHTML = '<strong>' + b.count + ' løper' + (b.count === 1 ? '' : 'e') + '</strong> · ' +
+        R.formatTime(b.from) + '–' + R.formatTime(b.to);
+      tip.classList.add('show');
+    }
+    function hideTip() {
+      tip.classList.remove('show');
+      container.querySelectorAll('.bar.active').forEach(function (a) { a.classList.remove('active'); });
+    }
+    container.querySelectorAll('.hit').forEach(function (el) {
+      el.addEventListener('mouseenter', function () { showTip(el); });
+      el.addEventListener('focus', function () { showTip(el); });
+      el.addEventListener('mouseleave', hideTip);
+      el.addEventListener('blur', hideTip);
+    });
+
+    return {
+      mark: function (runner) {
+        var g = container.querySelector('#marker');
+        if (!runner) { g.innerHTML = ''; return; }
+        var x = xTime(runner.seconds);
+        var anchor = x > W / 2 ? 'end' : 'start';
+        var dx = anchor === 'end' ? -6 : 6;
+        g.innerHTML = '<line class="you" x1="' + x + '" x2="' + x + '" y1="' + (m.top - 14) + '" y2="' + (m.top + ph) + '"/>' +
+          '<text class="you-label" x="' + (x + dx) + '" y="' + (m.top - 4) + '" text-anchor="' + anchor + '">' +
+          esc(runner.name) + ' – ' + R.formatTime(runner.seconds, data.decimals) + ' (' + runner.place + '.)</text>';
+      }
+    };
+  }
+})();
+</script>
+</body>
+</html>
