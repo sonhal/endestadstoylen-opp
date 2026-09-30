@@ -50,9 +50,10 @@
     var ok = items.filter(function (it) { return it.data && it.data.finishers.length; });
     var html = '';
 
-    /* Rekorder på tvers av år */
-    if (ok.length) {
-      var record = null, mostRunners = null, totalFinishers = 0, runners = {};
+    /* Rekorder på tvers av år – vises først når det finnes mer enn ett løp */
+    var record = null;
+    if (ok.length > 1) {
+      var mostRunners = null, totalFinishers = 0, runners = {};
       ok.forEach(function (it) {
         var w = it.data.finishers[0];
         if (!record || w.seconds < record.runner.seconds) record = { runner: w, year: it.race.year, d: it.data.decimals };

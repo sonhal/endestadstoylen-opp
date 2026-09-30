@@ -112,7 +112,7 @@
         return '<div class="podium-card medal-' + f.place + '">' +
           '<div class="pos">' + f.place + '. plass</div>' +
           '<div class="who">' + esc(f.name) + '</div>' +
-          '<div class="club">' + (esc(f.club) || '&nbsp;') + '</div>' +
+          (f.club ? '<div class="club">' + esc(f.club) + '</div>' : '') +
           '<div class="time">' + R.formatTime(f.seconds, d) + '</div>' +
           '<div class="gap">' + (f.gap ? R.formatGap(f.gap, d) : 'Vinner') + '</div></div>';
       }).join('') + '</div></section>';
@@ -125,17 +125,24 @@
 
     /* Resultatliste */
     var paceCol = !!race.distanceKm;
+    // Kolonner uten data i fila (f.eks. før klubb er registrert) skjules
+    var everyone = data.finishers.concat(data.others);
+    var cols = {
+      bib: everyone.some(function (f) { return f.bib; }),
+      club: everyone.some(function (f) { return f.club; }),
+      km: paceCol ? race.distanceKm : null
+    };
     html += '<section aria-labelledby="h-results"><h2 id="h-results">Resultatliste</h2>' +
       '<div class="toolbar">' +
-        '<input type="search" class="search" id="search" placeholder="Søk på navn, klubb eller startnummer" aria-label="Søk i resultatlisten">' +
+        '<input type="search" class="search" id="search" placeholder="Søk på navn' + (cols.club ? ', klubb' : '') + (cols.bib ? ' eller startnummer' : '') + '" aria-label="Søk i resultatlisten">' +
         '<span class="count" id="count"></span>' +
         '<a class="download" href="' + esc(race.file) + '" download>Last ned CSV</a>' +
       '</div>' +
       '<div class="table-wrap"><table id="results-table"><thead><tr>' +
         th('place', 'Plass', 'num') +
-        th('bib', 'Startnr', 'num hide-sm') +
+        (cols.bib ? th('bib', 'Startnr', 'num hide-sm') : '') +
         th('name', 'Navn') +
-        th('club', 'Klubb') +
+        (cols.club ? th('club', 'Klubb') : '') +
         th('seconds', 'Tid', 'num') +
         '<th class="num hide-sm" scope="col">Etter vinner</th>' +
         (paceCol ? '<th class="num hide-sm" scope="col">Tempo</th>' : '') +
@@ -162,7 +169,7 @@
     main.innerHTML = html;
 
     var chart = showChart ? drawHistogram(document.getElementById('chart'), data) : { mark: function () {} };
-    setupTable(data, paceCol ? race.distanceKm : null, chart);
+    setupTable(data, cols, chart);
   }
 
   function th(key, label, cls) {
@@ -171,7 +178,8 @@
   }
 
   /* ── Resultattabell med søk og sortering ── */
-  function setupTable(data, km, chart) {
+  function setupTable(data, cols, chart) {
+    var km = cols.km;
     var table = document.getElementById('results-table');
     var tbody = table.querySelector('tbody');
     var search = document.getElementById('search');
@@ -197,9 +205,9 @@
       var cls = finished ? (f.place <= 3 ? 'top3 medal-' + f.place : '') : 'dnf';
       return '<tr class="' + cls + '">' +
         '<td class="num place">' + (finished ? f.place + '.' : '–') + '</td>' +
-        '<td class="num hide-sm muted">' + esc(f.bib) + '</td>' +
+        (cols.bib ? '<td class="num hide-sm muted">' + esc(f.bib) + '</td>' : '') +
         '<td class="name">' + esc(f.name) + '</td>' +
-        '<td class="club">' + esc(f.club) + '</td>' +
+        (cols.club ? '<td class="club">' + esc(f.club) + '</td>' : '') +
         '<td class="num">' + (finished ? R.formatTime(f.seconds, d) : esc(f.status)) + '</td>' +
         '<td class="num hide-sm muted">' + (finished ? R.formatGap(f.gap, d) : '') + '</td>' +
         (km ? '<td class="num hide-sm muted">' + (finished ? R.formatPace(f.seconds, km) : '') + '</td>' : '') +
@@ -214,7 +222,7 @@
       }).sort(compare);
 
       tbody.innerHTML = rows.length ? rows.map(row).join('') :
-        '<tr class="empty-row"><td colspan="' + (km ? 7 : 6) + '">Ingen treff på «' + esc(search.value) + '»</td></tr>';
+        '<tr class="empty-row"><td colspan="' + table.querySelectorAll('thead th').length + '">Ingen treff på «' + esc(search.value) + '»</td></tr>';
       count.textContent = q ? rows.length + ' av ' + all.length + ' deltakere' : all.length + ' deltakere';
 
       // Marker løperen i histogrammet når søket treffer én person i mål
