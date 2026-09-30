@@ -158,9 +158,16 @@
     }
 
     /* ── Results link ── */
+    .hero-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.8rem;
+      margin-top: 3rem;
+    }
+
     .results-link {
       display: inline-block;
-      margin-top: 3rem;
       font-family: 'Helvetica Neue', Arial, sans-serif;
       font-size: 0.85rem;
       font-weight: 600;
@@ -219,7 +226,10 @@
 
     <div class="countdown" id="countdown" aria-live="polite" aria-label="Nedtelling til løpet"></div>
 
-    <a class="results-link" href="resultater.html">Tidligere resultater &rarr;</a>
+    <nav class="hero-links" aria-label="Mer om løpet">
+      <a class="results-link" href="loypa.html">Løypa &rarr;</a>
+      <a class="results-link" href="resultater.html">Tidligere resultater &rarr;</a>
+    </nav>
   </div>
 
   <p class="hero-footer">Endestadstøylen opp &bull; Fjellløp</p>

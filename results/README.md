@@ -49,3 +49,9 @@ python3 -m http.server 8000
 ```
 
 Åpne så <http://localhost:8000/resultater.html>.
+
+## Løypa (`course/endestadstoylen-opp.gpx`)
+
+`loypa.html` tegner kart, høydeprofil og fakta direkte fra GPX-fila. Hvis løypa endres, eksporter en ny GPX fra Strava (ruten → «Export GPX») og erstatt fila med samme navn. Kartet, profilen og tallene oppdateres av seg selv.
+
+Distanse og høydemeter som vises på resultatsidene (vertikalfart og tempo) kommer fra `distanse_km` og `stigning_m` i `lop.csv`. De settes per løp, slik at et år med en annen løype kan ha egne tall. For 2026 er de hentet fra GPX-fila: 1,25 km og 258 høydemeter.

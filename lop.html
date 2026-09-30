@@ -54,9 +54,13 @@
     document.getElementById('race-title').textContent = 'Endestadstøylen opp ' + race.year;
 
     var lead = [R.formatDate(race.date)];
-    if (race.distanceKm) lead.push(R.formatNumber(race.distanceKm, 1) + ' km');
+    if (race.distanceKm) lead.push(R.formatNumber(race.distanceKm, race.distanceKm % 1 ? 2 : 0).replace(/(,\d)0$/, '$1') + ' km');
     if (race.climbM) lead.push(R.formatNumber(race.climbM) + ' høydemeter');
-    document.getElementById('race-lead').textContent = lead.filter(Boolean).join(' · ');
+    var leadEl = document.getElementById('race-lead');
+    leadEl.textContent = lead.filter(Boolean).join(' · ');
+    if (race.distanceKm || race.climbM) {
+      leadEl.insertAdjacentHTML('beforeend', ' · <a href="loypa.html" style="color:#a8cce8">Se løypa</a>');
+    }
 
     document.getElementById('year-nav').innerHTML = races.slice().reverse().map(function (r) {
       return '<a href="lop.html?ar=' + encodeURIComponent(r.year) + '"' +
@@ -93,7 +97,10 @@
     if (s.stdDev != null) {
       tiles.push({ label: 'Standardavvik', value: R.formatTime(s.stdDev, 0), detail: 'Spredning i tid' });
     }
-    if (race.distanceKm) {
+    // I bratte løp sier vertikalfart mer enn min/km, så da vises den i stedet
+    if (race.climbM) {
+      tiles.push({ label: 'Vertikalfart', value: R.formatVertical(s.fastest, race.climbM), detail: 'Vinner' });
+    } else if (race.distanceKm) {
       tiles.push({ label: 'Vinnertempo', value: R.formatPace(s.fastest, race.distanceKm).replace(' /km', ''), detail: 'min per km' });
     }
 
@@ -130,7 +137,8 @@
     var cols = {
       bib: everyone.some(function (f) { return f.bib; }),
       club: everyone.some(function (f) { return f.club; }),
-      km: paceCol ? race.distanceKm : null
+      km: paceCol ? race.distanceKm : null,
+      climb: race.climbM
     };
     html += '<section aria-labelledby="h-results"><h2 id="h-results">Resultatliste</h2>' +
       '<div class="toolbar">' +
@@ -146,6 +154,7 @@
         th('seconds', 'Tid', 'num') +
         '<th class="num hide-sm" scope="col">Etter vinner</th>' +
         (paceCol ? '<th class="num hide-sm" scope="col">Tempo</th>' : '') +
+        (cols.climb ? '<th class="num hide-sm" scope="col" title="Høydemeter per time">Vertikalfart</th>' : '') +
       '</tr></thead><tbody></tbody></table></div></section>';
 
     /* Klubber */
@@ -211,6 +220,7 @@
         '<td class="num">' + (finished ? R.formatTime(f.seconds, d) : esc(f.status)) + '</td>' +
         '<td class="num hide-sm muted">' + (finished ? R.formatGap(f.gap, d) : '') + '</td>' +
         (km ? '<td class="num hide-sm muted">' + (finished ? R.formatPace(f.seconds, km) : '') + '</td>' : '') +
+        (cols.climb ? '<td class="num hide-sm muted">' + (finished ? R.formatVertical(f.seconds, cols.climb) : '') + '</td>' : '') +
         '</tr>';
     }
 

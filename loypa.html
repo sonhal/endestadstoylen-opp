@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Løypa – Endestadstøylen opp</title>
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="assets/results.css" />
+  <style>
+    #map {
+      height: 460px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      z-index: 0;
+    }
+    .map-fallback { padding: 1.5rem; color: var(--ink-3); }
+    .leaflet-container { font-family: var(--sans); }
+    .map-label {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.1rem 0.4rem;
+      box-shadow: none;
+    }
+    .map-label::before { display: none; }
+
+    .profile .area { fill: var(--bar); opacity: 0.12; }
+    .profile .line { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .profile .cross { stroke: var(--ink-3); stroke-width: 1; }
+    .profile .dot { fill: var(--bar); stroke: var(--surface); stroke-width: 2; }
+    .profile .end-label { fill: var(--ink-2); font-size: 11px; font-family: var(--sans); }
+    .profile .overlay { fill: transparent; cursor: crosshair; touch-action: none; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
+    .button {
+      display: inline-block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 0.55em 1.1em;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      background: var(--surface);
+    }
+    .button.primary { background: var(--accent); color: var(--surface); }
+    .button:hover { filter: brightness(1.1); }
+    .credit { font-size: 0.75rem; color: var(--ink-3); margin-top: 0.6rem; }
+
+    @media (max-width: 600px) { #map { height: 360px; } }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="inner">
+    <nav class="crumbs" aria-label="Brødsmuler">
+      <a href="./">Forside</a> &rsaquo; <span>Løypa</span>
+    </nav>
+    <span class="badge">Løypa</span>
+    <h1>Løypa</h1>
+    <p class="lead" id="lead">Rett opp til Endestadstøylen.</p>
+  </div>
+</header>
+
+<main id="main">
+  <p class="loading">Laster løypa…</p>
+</main>
+
+<footer>Endestadstøylen opp &bull; Fjellløp</footer>
+
+<script src="assets/vendor/leaflet/leaflet.js"></script>
+<script src="assets/results.js"></script>
+<script>
+(function () {
+  'use strict';
+  var GPX_FILE = 'course/endestadstoylen-opp.gpx';
+  var R = Results, esc = R.esc;
+  var main = document.getElementById('main');
+
+  fetch(GPX_FILE, { cache: 'no-cache' }).then(function (res) {
+    if (!res.ok) throw new Error('Kunne ikke hente ' + GPX_FILE + ' (' + res.status + ')');
+    return res.text();
+  }).then(function (text) {
+    var course = parseGPX(text);
+    if (course.points.length < 2) throw new Error('Fant ingen punkter i GPX-fila.');
+    render(course);
+  }).catch(function (err) {
+    main.innerHTML = '<div class="error"><strong>Kunne ikke vise løypa.</strong><br>' + esc(err.message) + '</div>';
+  });
+
+  /* ── GPX → punkter med kumulativ distanse ── */
+  function parseGPX(text) {
+    var doc = new DOMParser().parseFromString(text, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('GPX-fila er ugyldig.');
+    var nodes = doc.getElementsByTagName('trkpt');
+    if (!nodes.length) nodes = doc.getElementsByTagName('rtept');
+
+    var points = [], dist = 0;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var ele = n.getElementsByTagName('ele')[0];
+      var p = {
+        lat: parseFloat(n.getAttribute('lat')),
+        lon: parseFloat(n.getAttribute('lon')),
+        ele: ele ? parseFloat(ele.textContent) : null
+      };
+      if (points.length) dist += haversine(points[points.length - 1], p);
+      p.dist = dist;
+      points.push(p);
+    }
+
+    var nameEl = doc.getElementsByTagName('name')[0];
+    var linkEl = doc.querySelector('trk > link, metadata > link');
+    return {
+      name: nameEl ? nameEl.textContent : '',
+      link: linkEl ? linkEl.getAttribute('href') : '',
+      points: points
+    };
+  }
+
+  function haversine(a, b) {
+    var rad = Math.PI / 180, r = 6371000;
+    var dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * r * Math.asin(Math.sqrt(h));
+  }
+
+  function courseStats(pts) {
+    var gain = 0, loss = 0, steepest = 0;
+    for (var i = 1; i < pts.length; i++) {
+      var d = pts[i].ele - pts[i - 1].ele;
+      if (d > 0) gain += d; else loss -= d;
+    }
+    // Bratteste 100 m: stigning over hvert vindu på minst 100 m
+    for (i = 0; i < pts.length; i++) {
+      for (var j = i + 1; j < pts.length; j++) {
+        var len = pts[j].dist - pts[i].dist;
+        if (len >= 100) { steepest = Math.max(steepest, (pts[j].ele - pts[i].ele) / len); break; }
+      }
+    }
+    var first = pts[0], last = pts[pts.length - 1];
+    return {
+      distance: last.dist,
+      gain: gain,
+      loss: loss,
+      start: first.ele,
+      finish: last.ele,
+      avgGrade: (last.ele - first.ele) / last.dist,
+      steepest: steepest
+    };
+  }
+
+  // Stigning rundt et punkt, målt over ca. ±25 m
+  function gradeAt(pts, idx) {
+    var a = idx, b = idx;
+    while (a > 0 && pts[idx].dist - pts[a].dist < 25) a--;
+    while (b < pts.length - 1 && pts[b].dist - pts[idx].dist < 25) b++;
+    var len = pts[b].dist - pts[a].dist;
+    return len ? (pts[b].ele - pts[a].ele) / len : 0;
+  }
+
+  function pct(x) { return R.formatNumber(x * 100, 0) + ' %'; }
+  function moh(x) { return R.formatNumber(x, 0) + ' moh'; }
+
+  function render(course) {
+    var pts = course.points;
+    var hasEle = pts.every(function (p) { return p.ele != null && !isNaN(p.ele); });
+    var s = hasEle ? courseStats(pts) : { distance: pts[pts.length - 1].dist };
+
+    document.getElementById('lead').textContent = hasEle
+      ? R.formatNumber(s.distance / 1000, 2) + ' km og ' + R.formatNumber(s.gain, 0) +
+        ' høydemeter, fra ' + moh(s.start) + ' til ' + moh(s.finish) + '.'
+      : R.formatNumber(s.distance / 1000, 2) + ' km.';
+
+    var tiles = [{ label: 'Distanse', value: R.formatNumber(s.distance / 1000, 2) + ' km', detail: R.formatNumber(s.distance, 0) + ' meter' }];
+    if (hasEle) {
+      tiles.push(
+        { label: 'Stigning', value: R.formatNumber(s.gain, 0) + ' hm', detail: s.loss >= 1 ? R.formatNumber(s.loss, 0) + ' m nedover underveis' : 'Bare oppover' },
+        { label: 'Start', value: moh(s.start), detail: 'Høyde over havet' },
+        { label: 'Mål', value: moh(s.finish), detail: 'Endestadstøylen' },
+        { label: 'Snittstigning', value: pct(s.avgGrade), detail: R.formatNumber(s.avgGrade * 1000, 0) + ' hm per km' },
+        { label: 'Bratteste 100 m', value: pct(s.steepest), detail: 'Målt over 100 meter' }
+      );
+    }
+
+    var html = '<section aria-labelledby="h-facts"><h2 id="h-facts">Fakta</h2>' +
+      '<p class="section-sub">Regnet ut fra GPX-sporet av løypa.</p><div class="tiles">' +
+      tiles.map(function (t) {
+        return '<div class="tile"><div class="tile-label">' + esc(t.label) + '</div>' +
+          '<div class="tile-value">' + esc(t.value) + '</div>' +
+          '<div class="tile-detail" title="' + esc(t.detail) + '">' + esc(t.detail) + '</div></div>';
+      }).join('') + '</div></section>';
+
+    if (hasEle) {
+      html += '<section aria-labelledby="h-profile"><h2 id="h-profile">Høydeprofil</h2>' +
+        '<p class="section-sub">Hold musa (eller fingeren) over profilen for å se høyde og stigning, og hvor du er i kartet.</p>' +
+        '<div class="chart-card profile" id="profile"></div></section>';
+    }
+
+    html += '<section aria-labelledby="h-map"><h2 id="h-map">Kart</h2>' +
+      '<div id="map" role="region" aria-label="Kart over løypa"></div>' +
+      '<p class="credit">Kart © <a href="https://www.kartverket.no/">Kartverket</a>. Rutedata © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-bidragsytere</a>.</p>' +
+      '<div class="actions">' +
+        '<a class="button primary" href="' + esc(GPX_FILE) + '" download>Last ned GPX</a>' +
+        (/^https:\/\/www\.strava\.com\//.test(course.link) ? '<a class="button" href="' + esc(course.link) + '" rel="noopener" target="_blank">Åpne i Strava</a>' : '') +
+        '<a class="button" href="resultater.html">Se resultater</a>' +
+      '</div></section>';
+
+    main.innerHTML = html;
+
+    var map = drawMap(document.getElementById('map'), pts);
+    if (hasEle) drawProfile(document.getElementById('profile'), pts, map);
+  }
+
+  /* ── Kart (Leaflet + Kartverkets topografiske kart) ── */
+  function drawMap(el, pts) {
+    if (!window.L) {
+      el.innerHTML = '<p class="map-fallback">Kartet kunne ikke lastes.</p>';
+      return { show: function () {}, hide: function () {} };
+    }
+    var latlngs = pts.map(function (p) { return [p.lat, p.lon]; });
+    var map = L.map(el, { scrollWheelZoom: false });
+    var topo = L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', {
+      maxZoom: 18,
+      attribution: '© <a href="https://www.kartverket.no/">Kartverket</a>'
+    }).addTo(map);
+
+    // Reserve: bytt til OpenStreetMap hvis Kartverkets kartfliser ikke lar seg laste
+    var tileErrors = 0;
+    topo.on('tileerror', function () {
+      if (++tileErrors !== 3) return;
+      map.removeLayer(topo);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+    });
+
+    // Hvit kant under sporet så det synes på alle bakgrunner
+    L.polyline(latlngs, { color: '#ffffff', weight: 7, opacity: 0.9 }).addTo(map);
+    var line = L.polyline(latlngs, { color: '#d6451b', weight: 4 }).addTo(map);
+
+    L.circleMarker(latlngs[0], { radius: 7, color: '#fff', weight: 2, fillColor: '#2f7d32', fillOpacity: 1 })
+      .bindTooltip('Start', { permanent: true, direction: 'right', offset: [8, 0], className: 'map-label' }).addTo(map);
+    L.circleMarker(latlngs[latlngs.length - 1], { radius: 7, color: '#fff', weight: 2, fillColor: '#15212e', fillOpacity: 1 })
+      .bindTooltip('Mål', { permanent: true, direction: 'right', offset: [8, 0], className: 'map-label' }).addTo(map);
+
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+
+    var cursor = L.circleMarker(latlngs[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#3a78aa', fillOpacity: 1 });
+    return {
+      show: function (p) { cursor.setLatLng([p.lat, p.lon]); if (!map.hasLayer(cursor)) cursor.addTo(map); },
+      hide: function () { cursor.remove(); }
+    };
+  }
+
+  /* ── Høydeprofil (inline SVG) ── */
+  function drawProfile(container, pts, map) {
+    var W = Math.max(300, Math.min(960, container.clientWidth - 32));
+    var H = W < 500 ? 200 : 240;
+    var m = { top: 28, right: 12, bottom: 30, left: 46 };
+    var pw = W - m.left - m.right, ph = H - m.top - m.bottom;
+    var total = pts[pts.length - 1].dist;
+
+    var eles = pts.map(function (p) { return p.ele; });
+    var minE = Math.min.apply(null, eles), maxE = Math.max.apply(null, eles);
+    var yStep = niceStep((maxE - minE) / 4);
+    var y0 = Math.floor(minE / yStep) * yStep, y1 = Math.ceil(maxE / yStep) * yStep;
+    var xStep = niceStep(total / (W < 500 ? 4 : 6));
+
+    function x(d) { return m.left + (d / total) * pw; }
+    function y(e) { return m.top + ph - ((e - y0) / (y1 - y0)) * ph; }
+
+    var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p.dist).toFixed(1) + ',' + y(p.ele).toFixed(1); }).join('');
+    var area = line + 'L' + x(total) + ',' + y(y0) + 'L' + x(0) + ',' + y(y0) + 'Z';
+
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Høydeprofil fra ' + moh(pts[0].ele) + ' til ' + moh(pts[pts.length - 1].ele) + '">';
+    svg += '<g class="grid">';
+    for (var e = y0; e <= y1; e += yStep) svg += '<line x1="' + m.left + '" x2="' + (W - m.right) + '" y1="' + y(e) + '" y2="' + y(e) + '"/>';
+    svg += '</g><g class="axis">';
+    for (e = y0; e <= y1; e += yStep) svg += '<text x="' + (m.left - 8) + '" y="' + (y(e) + 4) + '" text-anchor="end">' + e + '</text>';
+    for (var d = 0; d <= total + 1; d += xStep) {
+      svg += '<text x="' + x(d) + '" y="' + (H - 8) + '" text-anchor="middle">' + (d >= 1000 ? R.formatNumber(d / 1000, 1) + ' km' : d + ' m') + '</text>';
+    }
+    svg += '<text x="' + (m.left - 8) + '" y="12" text-anchor="end">moh</text></g>';
+    svg += '<path class="area" d="' + area + '"/><path class="line" d="' + line + '"/>';
+    svg += '<line class="cross" id="cross" y1="' + m.top + '" y2="' + (m.top + ph) + '" visibility="hidden"/>';
+    svg += '<circle class="dot" id="pdot" r="5" visibility="hidden"/>';
+    svg += '<rect class="overlay" x="' + m.left + '" y="' + m.top + '" width="' + pw + '" height="' + ph + '"/>';
+    svg += '</svg><div class="tooltip" id="ptip"></div>';
+    container.innerHTML = svg;
+
+    var svgEl = container.querySelector('svg');
+    var cross = container.querySelector('#cross'), dot = container.querySelector('#pdot');
+    var tip = container.querySelector('#ptip');
+    var overlay = container.querySelector('.overlay');
+
+    function nearest(dist) {
+      var best = 0;
+      for (var i = 1; i < pts.length; i++) {
+        if (Math.abs(pts[i].dist - dist) < Math.abs(pts[best].dist - dist)) best = i;
+      }
+      return best;
+    }
+
+    function move(evt) {
+      var box = svgEl.getBoundingClientRect();
+      var src = evt.touches ? evt.touches[0] : evt;
+      var sx = (src.clientX - box.left) * (W / box.width);
+      var dist = Math.max(0, Math.min(total, ((sx - m.left) / pw) * total));
+      var i = nearest(dist), p = pts[i];
+      var px = x(p.dist), py = y(p.ele);
+      cross.setAttribute('x1', px); cross.setAttribute('x2', px);
+      cross.setAttribute('visibility', 'visible');
+      dot.setAttribute('cx', px); dot.setAttribute('cy', py);
+      dot.setAttribute('visibility', 'visible');
+
+      var boxC = container.getBoundingClientRect(), scale = box.width / W;
+      tip.style.left = (box.left - boxC.left + px * scale) + 'px';
+      tip.style.top = (box.top - boxC.top + py * scale) + 'px';
+      tip.innerHTML = '<strong>' + moh(p.ele) + '</strong> · ' + R.formatNumber(p.dist, 0) + ' m · ' + pct(gradeAt(pts, i));
+      tip.classList.add('show');
+      map.show(p);
+    }
+    function leave() {
+      cross.setAttribute('visibility', 'hidden');
+      dot.setAttribute('visibility', 'hidden');
+      tip.classList.remove('show');
+      map.hide();
+    }
+    overlay.addEventListener('mousemove', move);
+    overlay.addEventListener('touchstart', move, { passive: true });
+    overlay.addEventListener('touchmove', move, { passive: true });
+    overlay.addEventListener('mouseleave', leave);
+    overlay.addEventListener('touchend', leave);
+  }
+
+  function niceStep(raw) {
+    var pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    var f = raw / pow;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
+  }
+})();
+</script>
+</body>
+</html>

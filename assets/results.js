@@ -155,6 +155,12 @@
     return formatTime(sec / km, 0) + ' /km';
   }
 
+  // Vertikalfart i høydemeter per time
+  function formatVertical(sec, climbM) {
+    if (!climbM || !sec) return '–';
+    return formatNumber(climbM / (sec / 3600), 0) + ' m/t';
+  }
+
   function formatNumber(n, decimals) {
     return n.toLocaleString('nb-NO', {
       minimumFractionDigits: decimals || 0,
@@ -327,6 +333,7 @@
     formatTime: formatTime,
     formatGap: formatGap,
     formatPace: formatPace,
+    formatVertical: formatVertical,
     formatNumber: formatNumber,
     formatDate: formatDate,
     loadRaceIndex: loadRaceIndex,
