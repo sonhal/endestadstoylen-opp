@@ -157,6 +157,30 @@
       letter-spacing: 0.05em;
     }
 
+    /* ── Results link ── */
+    .results-link {
+      display: inline-block;
+      margin-top: 3rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #ffffff;
+      text-decoration: none;
+      border: 1px solid rgba(168, 204, 232, 0.6);
+      border-radius: 2px;
+      padding: 0.8em 1.6em;
+      background: rgba(10, 20, 35, 0.35);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .results-link:hover,
+    .results-link:focus-visible {
+      background: rgba(168, 204, 232, 0.2);
+      border-color: #a8cce8;
+    }
+
     /* ── Footer note ── */
     .hero-footer {
       position: absolute;
@@ -194,6 +218,8 @@
     <div class="divider" aria-hidden="true"></div>
 
     <div class="countdown" id="countdown" aria-live="polite" aria-label="Nedtelling til løpet"></div>
+
+    <a class="results-link" href="resultater.html">Tidligere resultater &rarr;</a>
   </div>
 
   <p class="hero-footer">Endestadstøylen opp &bull; Fjellløp</p>
