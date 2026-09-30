@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nyheter – Endestadstøylen opp</title>
+  <link rel="stylesheet" href="assets/results.css" />
+</head>
+<body>
+
+<header class="page-header">
+  <div class="inner">
+    <nav class="crumbs" aria-label="Brødsmuler">
+      <a href="./">Forside</a> &rsaquo; <span>Nyheter</span>
+    </nav>
+    <span class="badge">Nyheter</span>
+    <h1>Nyheter</h1>
+    <p class="lead">Oppdateringer fra arrangøren og omtale av Endestadstøylen opp i media.</p>
+  </div>
+</header>
+
+<main id="main">
+  <p class="loading">Laster nyheter…</p>
+</main>
+
+<footer>Endestadstøylen opp &bull; Fjellløp</footer>
+
+<script src="assets/results.js"></script>
+<script>
+(function () {
+  'use strict';
+  var R = Results, esc = R.esc;
+  var main = document.getElementById('main');
+  var TYPE_LABEL = { nyhet: 'Fra arrangøren', presse: 'I media' };
+
+  R.loadNews().then(function (items) {
+    if (!items.length) {
+      main.innerHTML = '<p class="muted">Ingen nyheter ennå.</p>';
+      return;
+    }
+    main.innerHTML = '<ol class="news-list">' + items.map(renderItem).join('') + '</ol>';
+  }).catch(function (err) {
+    main.innerHTML = '<div class="error"><strong>Kunne ikke vise nyhetene.</strong><br>' + esc(err.message) + '</div>';
+  });
+
+  function renderItem(n) {
+    var meta = ['<span class="news-type news-type-' + n.type + '">' + TYPE_LABEL[n.type] + '</span>'];
+    if (n.source) meta.push('<span>' + esc(n.source) + '</span>');
+    if (n.date) meta.push('<time datetime="' + esc(n.date) + '">' + esc(R.formatDate(n.date)) + '</time>');
+
+    var title = n.url
+      ? '<a href="' + esc(n.url) + '" target="_blank" rel="noopener">' + esc(n.title) + '</a>'
+      : esc(n.title);
+
+    var body = n.text
+      ? n.text.split(/\n\s*\n/).map(function (p) { return '<p>' + esc(p.trim()) + '</p>'; }).join('')
+      : '';
+
+    var link = '';
+    if (n.url) {
+      link = '<p class="news-link"><a href="' + esc(n.url) + '" target="_blank" rel="noopener">' +
+        (n.source ? 'Les saken hos ' + esc(n.source) : 'Les mer') + ' &nearr;</a>' +
+        (n.paywall ? ' <span class="tag">Krever abonnement</span>' : '') + '</p>';
+    }
+
+    var img = n.image
+      ? '<img class="news-image" src="' + esc(n.image) + '" alt="' + esc(n.imageAlt) + '" loading="lazy" />'
+      : '';
+
+    return '<li class="news-item">' + img + '<div class="news-meta">' + meta.join('<span aria-hidden="true">·</span>') + '</div>' +
+      '<h2>' + title + '</h2>' + body + link + '</li>';
+  }
+})();
+</script>
+</body>
+</html>
