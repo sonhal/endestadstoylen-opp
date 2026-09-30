@@ -353,6 +353,17 @@ tr.top3 td.place::before {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 1.2rem 1.3rem;
+  overflow: hidden;
+}
+.news-image {
+  display: block;
+  width: calc(100% + 2.6rem);
+  max-width: none;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin: -1.2rem -1.3rem 1rem;
+  background: var(--surface-2);
 }
 .news-meta {
   display: flex;

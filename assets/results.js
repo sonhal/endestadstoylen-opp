@@ -212,6 +212,7 @@
     return fetchText(NEWS_FILE).then(function (text) {
       return parseCSV(text).map(function (r) {
         var url = r.lenke || r.url || r.link || '';
+        var img = r.bilde || r.image || '';
         return {
           date: r.dato || r.date || '',
           type: (r.type || '').toLowerCase() === 'presse' ? 'presse' : 'nyhet',
@@ -220,7 +221,10 @@
           // Bare vanlige nettadresser, slik at en feil i fila ikke kan gi javascript:-lenker
           url: /^https?:\/\//i.test(url) ? url : '',
           source: r.kilde || r.source || '',
-          paywall: /^(ja|yes|x|1|true)$/i.test(r.betalingsmur || r.paywall || '')
+          paywall: /^(ja|yes|x|1|true)$/i.test(r.betalingsmur || r.paywall || ''),
+          // Filnavn i nyheter/bilder/, eller full nettadresse
+          image: !img ? '' : /^https?:\/\//i.test(img) ? img : 'nyheter/bilder/' + img.replace(/^.*[\/\\]/, ''),
+          imageAlt: r.bildetekst || r.alt || ''
         };
       }).filter(function (n) { return n.title; });
     });
