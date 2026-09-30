@@ -18,6 +18,7 @@ new one when it is created. Target: registration open well before the
 | Payment | None |
 | Crew | A simple "I want to help" sign-up plus a crew page |
 | Start list | Public: name and club |
+| T-shirt | Everyone, athletes and crew, picks a T-shirt size when registering |
 | Admin | One admin user |
 | Results | Still CSV files in the same format (`results/README.md`), but uploaded through the admin page and stored in the database instead of committed to git |
 | News | Still `nyheter/nyheter.csv` in git for now (see [Open questions](#open-questions)) |
@@ -85,6 +86,7 @@ CREATE TABLE races (
   date               TEXT NOT NULL,     -- 2027-03-26
   reg_opens_at       TEXT,              -- ISO-8601, NULL = open
   reg_closes_at      TEXT,              -- ISO-8601, NULL = no deadline
+  tshirt_deadline    TEXT,              -- last day to change size, NULL = none
   -- the columns that today live in results/lop.csv:
   distance_km        REAL,
   climb_m            INTEGER,
@@ -102,6 +104,10 @@ CREATE TABLE registrations (
   phone             TEXT,
   club              TEXT,               -- athletes, optional ("Klubb")
   message           TEXT,               -- crew: "I can bring coffee", optional
+  tshirt_size       TEXT NOT NULL       -- see "T-shirt sizes" below
+                    CHECK (tshirt_size IN ('none',
+                      '110/116', '122/128', '134/140', '146/152', '158/164',
+                      'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL')),
   publish_name      INTEGER NOT NULL DEFAULT 1,
   bib               INTEGER,            -- set by admin
   status            TEXT NOT NULL DEFAULT 'registered'
@@ -118,7 +124,22 @@ CREATE TABLE admin_sessions (
 ```
 
 We collect only what a family race needs: no birth date, gender or emergency
-contact.
+contact. The T-shirt size is not shown publicly.
+
+### T-shirt sizes
+
+- The field is required, so nobody is forgotten when the order is placed.
+  "No T-shirt" (`none`) is one of the choices.
+- Children's sizes are by height in cm (Norwegian standard), adult sizes are
+  unisex XS–3XL.
+- The list of allowed sizes is in one place in the Go code and sent to the
+  page by `GET /api/races/current`, so the form and the server can't disagree.
+  Changing the list later needs a migration, because of the `CHECK`.
+- The admin page shows a count per size (athletes and crew together and
+  separately), and it can be downloaded as CSV for the order.
+- `races` gets a `tshirt_deadline` column. After that date, participants can
+  no longer change their size through the manage link (the admin still can),
+  so the order isn't changed after it has been placed.
 
 The results CSV is stored as text in the database, not as a file on disk. That
 keeps all data in one file, so one backup covers everything.
@@ -137,6 +158,7 @@ keeps all data in one file, so one backup covers everything.
 | `POST /api/admin/login` / `logout` | admin | Session cookie |
 | `GET /api/admin/registrations` | admin | Everything, filterable by role |
 | `PATCH /api/admin/registrations/{id}` | admin | Bib, status, fix typos |
+| `GET /api/admin/tshirts` | admin | Count per size, athletes and crew; `?format=csv` for download |
 | `GET /api/admin/export.csv` | admin | Start list as `startnr,navn,klubb,tid` with `tid` empty, for the timekeeper to fill in |
 | `PUT /api/admin/races/{year}` | admin | Create or edit a race: date, registration dates, distance, climb, note |
 | `PUT /api/admin/races/{year}/results` | admin | Upload the results CSV (body is the file, `text/csv`) |
@@ -180,10 +202,10 @@ read by the page from `?t=` in the URL, so it is not logged by Caddy.
 
 | Page | Content |
 |---|---|
-| `pamelding.html` | Form with a choice: "I'm running" / "I want to help". Athletes: name, email, club (optional). Crew: name, email, phone (optional), message (optional). Consent box for being listed publicly. Shows the manage link after sending |
+| `pamelding.html` | Form with a choice: "I'm running" / "I want to help". Athletes: name, email, club (optional), T-shirt size. Crew: name, email, phone (optional), message (optional), T-shirt size. Consent box for being listed publicly. Shows the manage link after sending |
 | `startliste.html` | Public start list |
 | `mannskap.html` | Crew page: what helping involves, who has signed up, button to sign up |
-| `admin.html` | Login, list of athletes and crew, set bib, cancel, export start list, edit race details, upload results CSV with preview |
+| `admin.html` | Login, list of athletes and crew, set bib, cancel, T-shirt count per size, export start list, edit race details (including T-shirt deadline), upload results CSV with preview |
 
 The front page gets a "Meld deg på" button and a link to the crew page in the
 menu. All user-supplied text is inserted with `esc()` / `textContent`, as the
@@ -303,5 +325,7 @@ changes by hand.
 - Name of the new repository, and whether it should be private. Private
   works fine now that GitHub Pages is no longer used. The VPS then needs a
   read-only deploy key to `git pull`.
+- T-shirt: are the sizes right (children's sizes, unisex or separate
+  women's/men's cut)? Is the shirt free, and is there a deadline for the order?
 - Should news also be managed on the admin page later, instead of through
   `nyheter.csv` in git?
